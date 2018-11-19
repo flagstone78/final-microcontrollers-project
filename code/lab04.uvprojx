@@ -397,6 +397,11 @@
               <FileType>5</FileType>
               <FilePath>.\stm32l476xx.h</FilePath>
             </File>
+            <File>
+              <FileName>stm32l476.h</FileName>
+              <FileType>5</FileType>
+              <FilePath>.\stm32l476.h</FilePath>
+            </File>
           </Files>
         </Group>
       </Groups>

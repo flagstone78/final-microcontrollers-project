@@ -1,4 +1,5 @@
 #include "stm32l476xx.h"
+#include "stm32l476.h"
 
 //*************************************  32L476GDISCOVERY ***************************************************************************
 // STM32L4:  STM32L476VGT6 MCU = ARM Cortex-M4 + FPU + DSP, 
@@ -98,35 +99,50 @@ void delay(uint32_t cycles){
 	while(cycles > 0){cycles--;}
 }
 
-void SPI_Read(SPI_TypeDef * SPIx, uint8_t * rxBuffer, int size){
-	int i = 0;
-	for(i = 0; i < size; i++){
+// reads and writes on the spi2 bus
+// rxbuffer and tx buffer must be the same size
+void SPI2_ReadWrite(uint8_t * txBuffer, uint8_t * rxBuffer, int size){
+	for(int i = 0; i < size; i++){
 		//wait for the transmit buffer to be empty
-		while((SPIx->SR & SPI_SR_TXE) != SPI_SR_TXE);
+		while((SPI2->SR & SPI_SR_TXE) != SPI_SR_TXE);
 		
 		//send a dummy  byte to start the spi clock
-		SPIx->DR = 0xFF;
+		SPI2->DR = txBuffer[i];
+		
 		//wait for data
-		while((SPIx->SR & SPI_SR_RXNE) != SPI_SR_RXNE);
-		rxBuffer[i] = SPIx->DR; //save byte to buffer
+		while((SPI2->SR & SPI_SR_RXNE) != SPI_SR_RXNE);
+		rxBuffer[i] = SPI2->DR; //save byte to buffer
 	}
 	//wait for bsy flag to clear
-	while((SPIx->SR & SPI_SR_BSY) == SPI_SR_BSY);
+	while((SPI2->SR & SPI_SR_BSY) == SPI_SR_BSY);
 }
 
-void SPI_Write(SPI_TypeDef * SPIx, uint8_t * txBuffer, uint8_t * rxBuffer, int size){
-	int i = 0;
-	for(i = 0; i < size; i++){
-		//wait for transmit buffer to be empty
-		while((SPIx->SR & SPI_SR_TXE) != SPI_SR_TXE);
-		SPIx->DR = txBuffer[i]; //send data
-		
-		//wait for recieve buffer not empty
-		//while((SPIx->SR & SPI_SR_RXNE) != SPI_SR_RXNE);
-		//rxBuffer[i] = SPIx->DR; //save input data
-	}
-	// wait for BSY flag to clear
-	while((SPIx->SR & SPI_SR_BSY) == SPI_SR_BSY);
+int spi_read4Wire(int SubAddress)
+{
+	GPIOD_ODR &= ~BIT7; // Drive CS low
+	// 4-wire SPI read: MOSI,MISO,SCK and CS
+	short RValue;
+	int timeout;
+	timeout=100000;
+	SPI2_CR1 |= BIT14; // transmit mode
+	SPI2_DR = ((SubAddress | 0x80)); // output subaddress + read flag
+	while ((timeout--) && ((SPI2_SR & BIT7)!=0) ); // wait for tx complete
+	RValue = SPI2_DR >>8 ;
+	return RValue;
+	GPIOD_ODR |= BIT7; // Drive CS high
+}
+
+void WriteGyroRegister(int SubAddress, int Value)
+{
+	GPIOD_ODR &= ~BIT7; // Drive CS low
+	short RValue;
+	int timeout;
+	timeout=100000;
+	SPI2_DR = (short)((Value << 8)+SubAddress);
+	RValue=SPI2_SR;
+	while ( (timeout--) && ((SPI2_SR & BIT7)!=0) ); // wait for tx complete
+	RValue = SPI2_DR; // dummy read of data register
+	GPIOD_ODR |= BIT7; // Drive CS high
 }
 
 void USART2_INIT(){
@@ -176,7 +192,6 @@ void pinSetup(){
 										GPIO_AFRL_AFSEL4_0 | GPIO_AFRL_AFSEL4_2);
 		
 	//gyro chip select
-		
 	GPIOD->MODER &= ~GPIO_MODER_MODE7;
 	GPIOD->MODER |= GPIO_MODER_MODE7_0;	//Set PD7 moder to output mode (0x01)
 	
@@ -194,105 +209,55 @@ void pinSetup(){
   //GPIOD->OTYPER &= ~GPIO_OTYPER_OT_0;
 }
 
-void SPI_Init(){ 
-	RCC->APB1ENR1 |= RCC_APB1ENR1_SPI2EN; // enable the spi2 clock
-	RCC->APB1RSTR1 |= RCC_APB1RSTR1_SPI2RST; //reset the spi2
+void SPI_Init(){ //pg 1451
+	// Turn on SPI2 clock
+	RCC_APB1ENR1 |= BIT14;
+	// reset the SPI2 interface
+	RCC_APB1RSTR1 |= BIT14;
 	delay(10);
-	RCC->APB1RSTR1 &= ~RCC_APB1RSTR1_SPI2RST; //clear the reset of SPI2
+	RCC_APB1RSTR1 &= ~BIT14;
 	
-	//SPI2->CR1 |= SPI_CR1_SPE; //enable the spi
-	SPI2->CR1 &= ~SPI_CR1_SPE; //disable the spi
-	SPI2->CR1 &=~SPI_CR1_RXONLY; // set to full duplex mode. (‘1’ is receive only mode)
-	SPI2->CR1 &= ~SPI_CR1_BIDIMODE; //2 line unidirectional mode
-	SPI2->CR1 &=~SPI_CR1_BIDIOE; //disable the output
-	
-	//data format
-	SPI2->CR2 &= ~SPI_CR2_DS; //clear. DS is set to 0111 when an invalid setting is applied
-	//SPI2->CR2 = SPI_CR2_DS_0 | 	SPI_CR2_DS_1 | SPI_CR2_DS_2; // 0111: 8 bit
-
-	//Bit order
-	SPI2 -> CR1 &= ~SPI_CR1_LSBFIRST; //transmit and receive the msb first
-
-	//clock phase
-	SPI2->CR1 &= ~SPI_CR1_CPHA; //first clock transition is the first data capture edge
-
-	//clock polarity
-	SPI2->CR1 &= ~SPI_CR1_CPOL; //Polarity Low
-
-	//Baud rate control
-	// 000 = f/2	001 = f/4	010 = f/8 up to 111 = f/256
-	SPI2->CR1 &= ~SPI_CR1_BR; //sets the spi clock to 4MHZ/2 = 2 MHZ //TODO: bump up speed if needed
-
-	SPI2->CRCPR = 10; //CRC polynomial
-
-	//CRC calculation disabled
-	SPI2->CR1 &= ~SPI_CR1_CRCEN;
-
-	SPI2->CR2 &= ~SPI_CR2_FRF; //frame format to spi motorola mode
-	
-	//NSSGPIO 1 = software slave management	0 = Hardware NSS management
-	SPI2->CR1 |= SPI_CR1_SSM;
-
-	//set as master
-	SPI2->CR1 |= SPI_CR1_MSTR;
-
-	//Manage slave selection by software
-	SPI2->CR1 |= SPI_CR1_SSI;
-
-	//Enable slave selection pulse management
-	SPI2->CR2 |= SPI_CR2_NSSP;
-
-	//change how the RXNE goes high and low
-	SPI2->CR2 |= SPI_CR2_FRXTH;
-
-	//Enable the SPI
-	SPI2->CR1 |= SPI_CR1_SPE;
+	SPI2_CR2 = (0x07 << 8); // 8 bits per transfer, 1 byte threshold	
+	// setup the SPI operating modes etc
+	/*
+		Bidirectional mode (BIT15 = 1 for bidirectional mode)
+		Software slave management (chip select controlled by softare)
+		Internal slave select 
+		8 databits (Bit 7 = 0)
+		Enable SPI
+		Freq = fpclk/256
+		Master
+		CPOL (CK = 1 when idle)
+		CPHA (Data valid on second clock edge)
+	*/
+	SPI2_CR1 = BIT9+BIT8+BIT6+(7<<3)+BIT2+BIT1+BIT0;
 }
 
 void GYRO_IO_Read(uint8_t *pBuffer, uint8_t ReadADDR, uint8_t size){
 	uint8_t rxBuffer[32];
 	
 	//select read and multiple-byte mode
-	uint8_t AddrByte = (ReadADDR | (1U << 7) );
+	uint8_t AddrByte = (ReadADDR | (1U << 7) ); //read mode
 	
-	//if(size > 1) {AddrByte |= (1U << 6);}
+	if(size > 1) {AddrByte |= (1U << 6);} //multiple byte mode
 	
 	//set chip select low at the beginning of the transmission
 	L3GD20_CS_LOW; // 0 = SPI
-	delay(10);
+	delay(100);
 	
 	//send the address of the indexed register
-	SPI_Write(SPI2, &AddrByte, rxBuffer, 1);
+	SPI2_ReadWrite(&AddrByte, rxBuffer, 1);
 	
+	uint8_t txBuffer[32] ={0xff}; //fill with 0xff filler
+	txBuffer[0] = AddrByte;
 	//receive the data that will be read from the device (MSB first)
-	SPI_Read(SPI2, pBuffer, size);
+	SPI2_ReadWrite(txBuffer, pBuffer, size);
 
 	//set chip select
-	delay(10);
+	delay(100);
 	L3GD20_CS_HIGH;
 }
 
-void GYRO_IO_write(uint8_t *pBuffer, uint8_t WriteADDR, uint8_t size){
-	uint8_t rxBuffer[32];
-	
-	//if(size > 0x01){ //enables multiple byte write //TODO: check that this is correct
-	//	WriteADDR |= 1U << 6;
-	//}
-	
-	//set SPI interface
-	L3GD20_CS_LOW;
-	delay(10);
-	
-	//send the address of the indexed register
-	SPI_Write(SPI2, &WriteADDR, rxBuffer, 1);
-	
-	//send data
-	SPI_Write(SPI2, pBuffer, rxBuffer, size);
-
-	//set chip select high
-	delay(10);
-	L3GD20_CS_HIGH;
-}
 
 void serial(uint8_t *txBuffer, uint8_t size){
 	//while(!(USART2->ISR & USART_ISR_RXNE)); //wait until the receive register has a value
@@ -311,6 +276,11 @@ void serial(uint8_t *txBuffer, uint8_t size){
 
 const char charList[] = {'0','1','2','3','4','5','6','7','8','9','A','B','C','D','E','F'};
 
+uint8_t newL[] = {' ', '|', '\n', '\r'};
+void newline(){
+	serial(newL,4);
+}
+
 void SerialHex(uint8_t *txBuffer, uint8_t size){
 	uint8_t hex[size*4];
 	for(int i = 0; i<size*4; i += 4){
@@ -320,105 +290,84 @@ void SerialHex(uint8_t *txBuffer, uint8_t size){
 		hex[i+2] = charList[tens%16];
 		hex[i+3] = charList[txBuffer[i]%16];
 	}
-	
 	serial(hex, size*4);
 }
 
-struct {
-	float x;
-	float y;
-	float z;
-} Gyro;
-
-const uint8_t gyroDefaults[] = {0x07,0,0,0,0,0,1,1,1,1,1,1,1,1,0,1,0,1,0,0,0,0,0,0,0};
+void serialPrintGyro(int32_t in, char label ){
+	uint8_t hex[14];
+	hex[0] = label;
+	hex[1] = ':';
+	hex[2] = ' ';
+	if(in < 0){
+		in = -in; //negate
+		hex[2] = '-'; //minus sign
+	}
+	
+	uint8_t charNum;
+	for(int i = 7; i>2; i--){
+		charNum = in % 10;
+		hex[i] = charList[charNum];
+		in /= 10;
+	}
+	hex[8] = ' ';
+	hex[9] = ' ';
+	hex[10] = ' ';
+	hex[11] = ' ';
+	
+	serial(hex, 12);
+}
 
 int main(void){
+	//clock change
 	//RCC->CR |= (RCC_CR_HSION);
 	//while( (RCC->CR & RCC_CR_HSIRDY) == 0);
 	
 	pinSetup();
 	SPI_Init();
-	
-	
+		
 	USART2_INIT();
+	delay(100000);
 	
-	//uint8_t gyr[6], 
+	//WriteGyroRegister(CTRL_REG1,0x3f); // power up gyro at full speed, all axes.
+	//WriteGyroRegister(CTRL_REG3,BIT3); // Enable Int2 Data ready
+  WriteGyroRegister(CTRL_REG1,0xff);    // power up gyro at full speed, all axes.
+	
+	uint32_t delayTime = 10000;
+	
 	uint8_t status = 0;
+
 	
-	uint8_t all[48] = {0};
-	uint8_t testChar[4] = {' ', '|', '\n','\r'};
 	
-	//GYRO_IO_Read(all, 0x20, 25);
-	
-	/*struct {
-		float x;
-		float y;
-		float z;
-	} gyro;*/
-	
-	//int16_t gyro_x = 0, gyro_y = 0, gyro_z = 0;
-	uint32_t delayTime = 100000;
+	uint8_t gyr[6];
+	int16_t gyro_x = 0, gyro_y = 0, gyro_z = 0;
 	
 	while(1){
-		//GYRO_IO_Read(&status, 0x20, 1);
-		//delay(delayTime);
-		
-		//status = 0x00;
-		//GYRO_IO_write(&status, CTRL_REG4, 1); // power up gyro at full speed, all axes.
-		//delay(delayTime);
-		
-		
-		GYRO_IO_Read(&status, WHO_AM_I, 1);
-		
-		SerialHex(&status,1);
-		
-		delay(delayTime);
-		
-		serial(testChar, 4);
-		
-		delay(delayTime);
-		
-		GYRO_IO_Read(all, CTRL_REG1, 48);
-		
-		SerialHex(all,48);
-		
-		delay(delayTime);
-		
-		serial(testChar, 4);
-		
-		delay(delayTime);
-		
-		//status = 0x3E;
-		//GYRO_IO_write(&status, CTRL_REG1, 1); // power up gyro at full speed, all axes.
-		//delay(delayTime);
-		
-		
-		
-		
-		/*GYRO_IO_Read(all, 0x20, 25);
-		delay(delayTime);
-		
-		status = (1<<3);
-		GYRO_IO_write(&status, CTRL_REG3, 1); // Enable Int2 Data ready
-		delay(delayTime);
-		
-		GYRO_IO_Read(all, 0x20, 25);
-		delay(delayTime);*/
-	}
-	/*while(1){
 		
 		GYRO_IO_Read(&status, L3GD20_STATUS_REG_ADDR, 1);
 		
 		if((status & 0x08) == 0x08) {
-			GYRO_IO_Read(gyr, L3GD20_OUT_X_L_ADDR, 6);
+			for(int i = 0; i<6; i++){
+				GYRO_IO_Read(&status, OUT_X_L+i, 1);
+				//status = spi_read4Wire(OUT_X_L+i);
+				SerialHex(&status,1);
+			
+				delay(delayTime);
+				gyr[i] = status;
+			}
+			//newline();
+			
+			//GYRO_IO_Read(gyr, L3GD20_OUT_X_L_ADDR, 6);
 			gyro_x = (int16_t) ((uint16_t) (gyr[1] <<8) + gyr[0]);
 			gyro_y = (int16_t) ((uint16_t) (gyr[3] <<8) + gyr[2]);
 			gyro_z = (int16_t) ((uint16_t) (gyr[5] <<8) + gyr[4]);
 
 			//for 2000dps, 1 unit equals 70 millidegrees per second
-			gyro.x = (float) gyro_x * 0.070f;
-			gyro.y = (float) gyro_y * 0.070f;
-			gyro.z = (float) gyro_z * 0.070f;
+			//for 250dps, 1 unit equals 3.814 millidegrees per second
+			
+			serialPrintGyro(gyro_x, 'x');
+			serialPrintGyro(gyro_y, 'y');
+			serialPrintGyro(gyro_z, 'z');
+			newline();
 		}	
-	}*/
+	}
 }
