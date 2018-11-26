@@ -398,9 +398,49 @@
               <FilePath>.\stm32l476xx.h</FilePath>
             </File>
             <File>
-              <FileName>stm32l476.h</FileName>
+              <FileName>spi.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>.\spi.c</FilePath>
+            </File>
+            <File>
+              <FileName>serial.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>.\serial.c</FilePath>
+            </File>
+            <File>
+              <FileName>serial.h</FileName>
               <FileType>5</FileType>
-              <FilePath>.\stm32l476.h</FilePath>
+              <FilePath>.\serial.h</FilePath>
+            </File>
+            <File>
+              <FileName>spi.h</FileName>
+              <FileType>5</FileType>
+              <FilePath>.\spi.h</FilePath>
+            </File>
+            <File>
+              <FileName>gyro.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>.\gyro.c</FilePath>
+            </File>
+            <File>
+              <FileName>gyro.h</FileName>
+              <FileType>5</FileType>
+              <FilePath>.\gyro.h</FilePath>
+            </File>
+            <File>
+              <FileName>stepper.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>.\stepper.c</FilePath>
+            </File>
+            <File>
+              <FileName>stepper.h</FileName>
+              <FileType>5</FileType>
+              <FilePath>.\stepper.h</FilePath>
+            </File>
+            <File>
+              <FileName>systick.h</FileName>
+              <FileType>5</FileType>
+              <FilePath>.\systick.h</FilePath>
             </File>
           </Files>
         </Group>
