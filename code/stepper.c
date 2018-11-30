@@ -2,26 +2,27 @@
 
 void stepper_Init(void){
 	//stepper 1
-	//dir PB6
-	//step PB7
-	RCC-> AHB2ENR |= RCC_AHB2ENR_GPIOBEN; // enable port b clock
-	//set gpio b 6 and 7 to output
-	GPIOB->MODER &= ~(GPIO_MODER_MODE7 | GPIO_MODER_MODE6);
-	GPIOB->MODER |= (GPIO_MODER_MODE7_0 | GPIO_MODER_MODE6_0);
+	//dir PE15 PE13
+	//step PE12 PE14
+	RCC-> AHB2ENR |= RCC_AHB2ENR_GPIOEEN; // enable port b clock
+	//set gpio e 15, 13, 12 and 14 to output
+	GPIOE->MODER &= ~(GPIO_MODER_MODE15 | GPIO_MODER_MODE13 | GPIO_MODER_MODE14 | GPIO_MODER_MODE12);
+	GPIOE->MODER |= (GPIO_MODER_MODE15_0 | GPIO_MODER_MODE13_0 | GPIO_MODER_MODE14_0 | GPIO_MODER_MODE12_0);
 	
 	//Set PD7 otypr to push/pull (0x0)
-  GPIOB->OTYPER &= ~(GPIO_OTYPER_OT_7 | GPIO_OTYPER_OT_6);
+  GPIOE->OTYPER &= ~(GPIO_OTYPER_OT_15 | GPIO_OTYPER_OT_13 | GPIO_OTYPER_OT_12 | GPIO_OTYPER_OT_14);
 }
 
 int deadzone = 20;
 void setDirection(int dir){
 	if(dir > deadzone){
-		GPIOB->ODR |= (1U << 6); //set dir pin PB6
+		GPIOE->ODR |= (1U << 15 | 1U << 13); //set dir pin PE15 abd 13	
 	} else if(dir < -deadzone) {
-		GPIOB->ODR &= ~(1U << 6); //clear dir pin PB6
+		GPIOE->ODR &= ~(1U << 15 | 1U << 13); //clear dir pin E15 and 13
 	}
 }
 
 void step(void){
-	GPIOB->ODR ^= (1U << 7); //toggle step pin PB7
+	GPIOE->ODR ^= (1U << 12); //toggle step pin PE12 and 14
+	GPIOE->ODR ^= (1U << 14);
 }

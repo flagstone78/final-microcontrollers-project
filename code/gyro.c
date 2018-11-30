@@ -30,11 +30,12 @@ void WriteGyroRegister(int SubAddress, int Value)
 {
 	GPIOD->ODR &= ~GPIO_ODR_OD7; // Drive CS low
 	short RValue;
-	int timeout;
-	timeout=100000;
-	SPI2->DR = (short)((Value << 8)+SubAddress);
-	RValue=SPI2->SR;
-	while ( (timeout--) && ((SPI2->SR & SPI_SR_BSY)!=0) ); // wait for tx complete
+	int timeout = 100000;
+	
+	SPI2->DR = (short)((Value << 8)+SubAddress); //put write bit on address
+	RValue = SPI2->SR; //???
+	
+	while ( (timeout--) && ((SPI2->SR & SPI_SR_BSY)!=0) ); // wait for tx complete or time out
 	RValue = SPI2->DR; // dummy read of data register
 	GPIOD->ODR |= GPIO_ODR_OD7; // Drive CS high
 }

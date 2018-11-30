@@ -66,7 +66,6 @@
 //****************************************************************************************************************
 
 
-
 int main(void){
 	//clock change
 	//RCC->CR |= (RCC_CR_HSION);
@@ -93,12 +92,16 @@ int main(void){
 	int16_t gyro_x = 0, gyro_y = 0, gyro_z = 0;
 	int32_t agyro_x = 0, agyro_y = 0, agyro_z = 0; //average
 	
+	setDirection(1); //make both wheels go the same direction
+	
+	int angle = 0;
+	
 	while(1){
 		
 		GYRO_IO_Read(&status, L3GD20_STATUS_REG_ADDR, 1);
 		
 		if((status & 0x08) == 0x08) {
-			for(int i = 0; i<6; i++){
+			for(int i = 0; i<2; i++){
 				GYRO_IO_Read(&status, OUT_X_L+i, 1);
 				//status = spi_read4Wire(OUT_X_L+i);
 				//SerialHex(&status,1);
@@ -110,21 +113,24 @@ int main(void){
 			
 			//GYRO_IO_Read(gyr, L3GD20_OUT_X_L_ADDR, 6);
 			gyro_x = (int16_t) ((uint16_t) (gyr[1] <<8) + gyr[0])+90;
-			gyro_y = (int16_t) ((uint16_t) (gyr[3] <<8) + gyr[2])-80;
-			gyro_z = (int16_t) ((uint16_t) (gyr[5] <<8) + gyr[4]);
+			//gyro_y = (int16_t) ((uint16_t) (gyr[3] <<8) + gyr[2])-80;
+			//gyro_z = (int16_t) ((uint16_t) (gyr[5] <<8) + gyr[4]);
 
-			agyro_x = (((int32_t)gyro_x) + agyro_x*9)/10;
-			agyro_y = (((int32_t)gyro_y) + agyro_y*9)/10;
-			agyro_z = (((int32_t)gyro_z) + agyro_z*9)/10;
+			//agyro_x = (((int32_t)gyro_x) + agyro_x*9)/10;
+			//agyro_y = (((int32_t)gyro_y) + agyro_y*9)/10;
+			//agyro_z = (((int32_t)gyro_z) + agyro_z*9)/10;
 			
 			//for 2000dps, 1 unit equals 70 millidegrees per second
 			//for 250dps, 1 unit equals 3.814 millidegrees per second
 			
-			//serialPrintGyro(agyro_x, 'x');
+			serialPrintGyro(angle, 'x');
 			//serialPrintGyro(agyro_y, 'y');
 			//serialPrintGyro(agyro_z, 'z');
-			//newline();
-			setDirection(agyro_x);
+			newline();
+			angle += gyro_x;
+			
+			setDirection(angle);
+			Systick_Freq_Update(abs(angle));
 		}	
 	}
 }
