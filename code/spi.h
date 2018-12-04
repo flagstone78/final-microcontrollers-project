@@ -8,8 +8,6 @@
 
 void delay(uint32_t);
 void SPI_Init(void);
-void SPI2_ReadWrite(uint8_t*, uint8_t*, int );
-int spi_read4Wire(int);
-
+uint8_t sendRecieve8(uint8_t data);
 	
 #endif /* __spi */

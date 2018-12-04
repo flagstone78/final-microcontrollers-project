@@ -71,7 +71,7 @@ int main(void){
 	//RCC->CR |= (RCC_CR_HSION);
 	//while( (RCC->CR & RCC_CR_HSIRDY) == 0);
 	stepper_Init();
-	Systick_Initialization();
+	//Systick_Initialization();
 	
 	SPI_Init();
 	
@@ -82,37 +82,43 @@ int main(void){
 	
 	//WriteGyroRegister(CTRL_REG1,0x3f); // power up gyro at full speed, all axes.
 	//WriteGyroRegister(CTRL_REG3,BIT3); // Enable Int2 Data ready
-  WriteGyroRegister(CTRL_REG1,0xff);    // power up gyro at full speed, all axes.
+  //WriteGyroRegister(CTRL_REG1,0xff);    // power up gyro at full speed, all axes.
 	
-	uint32_t delayTime = 100;
+	uint8_t ctrl_reg_val = 0xff;
+	GYRO_IO_Write(CTRL_REG1, 1, &ctrl_reg_val);
+	
+	//uint32_t delayTime = 100;
 	
 	uint8_t status = 0;
 
 	uint8_t gyr[6];
-	int16_t gyro_x = 0, gyro_y = 0, gyro_z = 0;
-	int32_t agyro_x = 0, agyro_y = 0, agyro_z = 0; //average
+	int16_t gyro_x = 0; //, gyro_y = 0, gyro_z = 0;
+	//int32_t agyro_x = 0, agyro_y = 0, agyro_z = 0; //average
 	
 	setDirection(1); //make both wheels go the same direction
 	
 	int angle = 0;
 	
 	while(1){
-		
-		GYRO_IO_Read(&status, L3GD20_STATUS_REG_ADDR, 1);
-		
+		//GYRO_IO_Read(&status, L3GD20_STATUS_REG_ADDR, 1);
+		GYRO_IO_Read(L3GD20_STATUS_REG_ADDR, 1, &status);
+		//serialPrintGyro(status, 's');
+		//newline();
 		if((status & 0x08) == 0x08) {
-			for(int i = 0; i<2; i++){
+			/*for(int i = 0; i<2; i++){
 				GYRO_IO_Read(&status, OUT_X_L+i, 1);
 				//status = spi_read4Wire(OUT_X_L+i);
 				//SerialHex(&status,1);
 			
 				delay(delayTime);
 				gyr[i] = status;
-			}
+			}*/
+			GYRO_IO_Read(OUT_X_L, 2, gyr);
+			
 			//newline();
 			
 			//GYRO_IO_Read(gyr, L3GD20_OUT_X_L_ADDR, 6);
-			gyro_x = (int16_t) ((uint16_t) (gyr[1] <<8) + gyr[0])+90;
+			gyro_x = (int16_t) ((uint16_t) (gyr[1] <<8) + gyr[0])+83;
 			//gyro_y = (int16_t) ((uint16_t) (gyr[3] <<8) + gyr[2])-80;
 			//gyro_z = (int16_t) ((uint16_t) (gyr[5] <<8) + gyr[4]);
 
@@ -123,9 +129,10 @@ int main(void){
 			//for 2000dps, 1 unit equals 70 millidegrees per second
 			//for 250dps, 1 unit equals 3.814 millidegrees per second
 			
-			serialPrintGyro(angle, 'x');
-			//serialPrintGyro(agyro_y, 'y');
-			//serialPrintGyro(agyro_z, 'z');
+			//serialPrintGyro(angle, 'x');
+			serialPrintGyro(gyro_x, 'x');
+			//serialPrintGyro(gyro_y, 'y');
+			//serialPrintGyro(gyro_z, 'z');
 			newline();
 			angle += gyro_x;
 			

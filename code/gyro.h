@@ -35,7 +35,9 @@
 #define INT1_TSH_ZL			0x37
 #define INT1_DURATION		0x38
 
-void WriteGyroRegister(int , int);
-void GYRO_IO_Read(uint8_t *pBuffer, uint8_t ReadADDR, uint8_t size);
+//void WriteGyroRegister(int , int);
+//void GYRO_IO_Read(uint8_t *pBuffer, uint8_t ReadADDR, uint8_t size);
+void GYRO_IO_Read(uint8_t readADDR, unsigned int size, uint8_t *rxBuffer);
+void GYRO_IO_Write(uint8_t writeAddress, uint8_t size, uint8_t *txBuffer);
 	
 #endif /* __gyro */

@@ -71,36 +71,12 @@ void SPI_Init(){ //pg 1451
 	SPI2->CR1 |= SPI_CR1_SPE; //enable
 }
 
-// reads and writes on the spi2 bus
-// rxbuffer and tx buffer must be the same size
-void SPI2_ReadWrite(uint8_t * txBuffer, uint8_t * rxBuffer, int size){
-	for(int i = 0; i < size; i++){
-		//wait for the transmit buffer to be empty
-		while((SPI2->SR & SPI_SR_TXE) != SPI_SR_TXE);
-		
-		//send a dummy  byte to start the spi clock
-		SPI2->DR = txBuffer[i];
-		
-		//wait for data
-		while((SPI2->SR & SPI_SR_RXNE) != SPI_SR_RXNE);
-		rxBuffer[i] = SPI2->DR; //save byte to buffer
-	}
-	//wait for bsy flag to clear
-	while((SPI2->SR & SPI_SR_BSY) == SPI_SR_BSY);
-}
-
-int spi_read4Wire(int SubAddress)
-{
-	GPIOD->ODR &= ~GPIO_ODR_OD7; // Drive CS low
-	// 4-wire SPI read: MOSI,MISO,SCK and CS
-	short RValue;
-	int timeout;
-	timeout=100000;
-	SPI2->CR1 |= SPI_CR1_BIDIOE; // transmit mode
-	SPI2->DR = ((SubAddress | 0x80)); // output subaddress + read flag
+uint8_t sendRecieve8(uint8_t data){
+	*((uint8_t*)&SPI2->DR) = (uint8_t) data; //write only 8 bit to DR; otherwise data packing is used
+	int timeout = 100000;
 	while ((timeout--) && ((SPI2->SR & SPI_SR_BSY)!=0) ); // wait for tx complete
-	RValue = SPI2->DR >>8 ;
-	return RValue;
-	GPIOD->ODR |= GPIO_ODR_OD7; // Drive CS high
+	
+	//while((SPI2->SR & SPI_SR_RXNE) != SPI_SR_RXNE);//wait for recieve data
+	
+	return *((uint8_t*)&SPI2->DR); //read an 8 bit value
 }
-
