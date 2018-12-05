@@ -1,44 +1,29 @@
 #include "gyro.h"
 
-
-/*void GYRO_IO_Read(uint8_t *pBuffer, uint8_t ReadADDR, uint8_t size){
-	uint8_t rxBuffer[32];
+void GYRO_Init(){
+	L3GD20_CS_HIGH; //set chip select high
+	SPI1_CS_HIGH;
 	
-	//select read and multiple-byte mode
-	uint8_t AddrByte = (ReadADDR | (1U << 7) ); //read mode
+	/*//3-wire mode is entered by setting the bit SIM to ‘1’ in CTRL_REG4.
 	
-	if(size > 1) {AddrByte |= (1U << 6);} //multiple byte mode
+	uint8_t val = 0;
+	val |= (1U << 0);  //3 wire spi mode
+	val &= ~(1U << 1); //must be 0
+	val &= ~(1U << 2); //must be 0
+	val &= ~(1U << 3); //blank
 	
-	//set chip select low at the beginning of the transmission
-	L3GD20_CS_LOW; // 0 = SPI
-	delay(10);
+	//full scale select 250 dps
+	//for 250dps, 1 unit equals 3.814 millidegrees per second
+	val &= ~(1U << 4);
+	val &= ~(1U << 5);
 	
-	//send the address of the indexed register
-	SPI2_ReadWrite(&AddrByte, rxBuffer, 1);
+	val &= ~(1U << 6); //LSB at lower address
+	val &= ~(1U << 7); //continuous update
+	GYRO_IO_Write(CTRL_REG4, 1, &val);*/
 	
-	uint8_t txBuffer[32] ={0xff}; //fill with 0xff filler
-	txBuffer[0] = AddrByte;
-	//receive the data that will be read from the device (MSB first)
-	SPI2_ReadWrite(txBuffer, pBuffer, size);
-
-	//set chip select
-	delay(10);
-	L3GD20_CS_HIGH;
+	uint8_t ctrl_reg_val = 0xff; // power up gyro at full speed, all axes.
+	GYRO_IO_Write(CTRL_REG1, 1, &ctrl_reg_val);
 }
-
-void WriteGyroRegister(int SubAddress, int Value)
-{
-	GPIOD->ODR &= ~GPIO_ODR_OD7; // Drive CS low
-	short RValue;
-	int timeout = 100000;
-	
-	SPI2->DR = (short)((Value << 8)+SubAddress); //put write bit on address
-	RValue = SPI2->SR; //???
-	
-	while ( (timeout--) && ((SPI2->SR & SPI_SR_BSY)!=0) ); // wait for tx complete or time out
-	RValue = SPI2->DR; // dummy read of data register
-	GPIOD->ODR |= GPIO_ODR_OD7; // Drive CS high
-}*/
 
 void GYRO_IO_Read(uint8_t readADDR, unsigned int size, uint8_t *rxBuffer){
 	//select read and multiple-byte mode
@@ -48,6 +33,7 @@ void GYRO_IO_Read(uint8_t readADDR, unsigned int size, uint8_t *rxBuffer){
 	
 	//set chip select low at the beginning of the transmission
 	L3GD20_CS_LOW; // 0 = SPI
+	SPI1_CS_LOW;
 	delay(10);
 	
 	sendRecieve8(readADDR); //send address, ingore input
@@ -57,6 +43,7 @@ void GYRO_IO_Read(uint8_t readADDR, unsigned int size, uint8_t *rxBuffer){
 
 	//release chip select
 	L3GD20_CS_HIGH;
+	SPI1_CS_HIGH;
 	delay(10);
 }
 
@@ -65,6 +52,7 @@ void GYRO_IO_Write(uint8_t writeAddress, uint8_t size, uint8_t *txBuffer){
 	if(size > 1) {writeAddress |= (1U << 6);} //multiple byte mode
 	//set chip select low at the beginning of the transmission
 	L3GD20_CS_LOW; // 0 = SPI
+	SPI1_CS_LOW;
 	delay(10);
 	
 	sendRecieve8(writeAddress); //send address, ingore input
@@ -74,5 +62,19 @@ void GYRO_IO_Write(uint8_t writeAddress, uint8_t size, uint8_t *txBuffer){
 
 	//release chip select
 	L3GD20_CS_HIGH;
+	GPIOE->ODR |= GPIO_ODR_OD12;
 	delay(10);
+}
+
+void printAllGyro(){
+	uint8_t data = 0;
+	GYRO_IO_Read(WHO_AM_I, 1, &data);
+	
+	uint8_t alldata[25];
+	for(int i = 0; i<25; i++){
+		GYRO_IO_Read(CTRL_REG1+i, 1, &alldata[i]);
+	}
+	SerialHex(&data, 1);
+	SerialHex(alldata, 25);
+	newline();
 }

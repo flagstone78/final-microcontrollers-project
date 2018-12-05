@@ -2,6 +2,7 @@
 #include "serial.h"
 #include "spi.h"
 #include "gyro.h"
+#include "Accelerometer.h"
 #include "stepper.h"
 #include "systick.h"
 //*************************************  32L476GDISCOVERY ***************************************************************************
@@ -80,19 +81,17 @@ int main(void){
 	serial(hi,2);
 	delay(100000);
 	
-	//WriteGyroRegister(CTRL_REG1,0x3f); // power up gyro at full speed, all axes.
-	//WriteGyroRegister(CTRL_REG3,BIT3); // Enable Int2 Data ready
-  //WriteGyroRegister(CTRL_REG1,0xff);    // power up gyro at full speed, all axes.
+	GYRO_Init();
+	ACCEL_Init();
 	
-	uint8_t ctrl_reg_val = 0xff;
-	GYRO_IO_Write(CTRL_REG1, 1, &ctrl_reg_val);
-	
-	//uint32_t delayTime = 100;
 	
 	uint8_t status = 0;
 
-	uint8_t gyr[6];
+	uint8_t gyr[6]; //raw gyro data
+	uint8_t acc[6]; //raw accel data
+	
 	int16_t gyro_x = 0; //, gyro_y = 0, gyro_z = 0;
+	int16_t accel_x = 0, accel_y = 0, accel_z = 0;
 	//int32_t agyro_x = 0, agyro_y = 0, agyro_z = 0; //average
 	
 	setDirection(1); //make both wheels go the same direction
@@ -100,25 +99,16 @@ int main(void){
 	int angle = 0;
 	
 	while(1){
-		//GYRO_IO_Read(&status, L3GD20_STATUS_REG_ADDR, 1);
-		GYRO_IO_Read(L3GD20_STATUS_REG_ADDR, 1, &status);
-		//serialPrintGyro(status, 's');
-		//newline();
+		//printAllGyro();
+		//printAllAccel();
+		
+		//GYRO
+		GYRO_IO_Read(STATUS_REG, 1, &status);
 		if((status & 0x08) == 0x08) {
-			/*for(int i = 0; i<2; i++){
-				GYRO_IO_Read(&status, OUT_X_L+i, 1);
-				//status = spi_read4Wire(OUT_X_L+i);
-				//SerialHex(&status,1);
-			
-				delay(delayTime);
-				gyr[i] = status;
-			}*/
 			GYRO_IO_Read(OUT_X_L, 2, gyr);
 			
-			//newline();
-			
 			//GYRO_IO_Read(gyr, L3GD20_OUT_X_L_ADDR, 6);
-			gyro_x = (int16_t) ((uint16_t) (gyr[1] <<8) + gyr[0])+83;
+			gyro_x = (int16_t) ((uint16_t) (gyr[1] <<8) + gyr[0])+130;
 			//gyro_y = (int16_t) ((uint16_t) (gyr[3] <<8) + gyr[2])-80;
 			//gyro_z = (int16_t) ((uint16_t) (gyr[5] <<8) + gyr[4]);
 
@@ -126,18 +116,46 @@ int main(void){
 			//agyro_y = (((int32_t)gyro_y) + agyro_y*9)/10;
 			//agyro_z = (((int32_t)gyro_z) + agyro_z*9)/10;
 			
-			//for 2000dps, 1 unit equals 70 millidegrees per second
-			//for 250dps, 1 unit equals 3.814 millidegrees per second
+
 			
 			//serialPrintGyro(angle, 'x');
-			serialPrintGyro(gyro_x, 'x');
+			//serialPrintGyro(gyro_x, 'x');
 			//serialPrintGyro(gyro_y, 'y');
 			//serialPrintGyro(gyro_z, 'z');
-			newline();
-			angle += gyro_x;
+			//newline();
 			
 			setDirection(angle);
 			Systick_Freq_Update(abs(angle));
-		}	
+		}
+		
+		//ACCEL
+		ACCEL_IO_Read(STATUS_REG_A, 1, &status);
+		if((status & 0x08) == 0x08) {
+			ACCEL_IO_Read(OUT_X_L_A, 1, &acc[0]);
+			ACCEL_IO_Read(OUT_X_H_A, 1, &acc[1]);
+			ACCEL_IO_Read(OUT_Y_L_A, 1, &acc[2]);
+			ACCEL_IO_Read(OUT_Y_H_A, 1, &acc[3]);
+			ACCEL_IO_Read(OUT_Z_L_A, 1, &acc[4]);
+			ACCEL_IO_Read(OUT_Z_H_A, 1, &acc[5]);
+			//SerialHex(acc, 6);
+			//GYRO_IO_Read(gyr, L3GD20_OUT_X_L_ADDR, 6);
+			accel_x = (int16_t) ((uint16_t) (acc[1] <<8) + acc[0]);
+			accel_y = (int16_t) ((uint16_t) (acc[3] <<8) + acc[2]);
+			accel_z = (int16_t) ((uint16_t) (acc[5] <<8) + acc[4]);
+
+			//agyro_x = (((int32_t)gyro_x) + agyro_x*9)/10;
+			//agyro_y = (((int32_t)gyro_y) + agyro_y*9)/10;
+			//agyro_z = (((int32_t)gyro_z) + agyro_z*9)/10;
+
+			angle += (98*(int)gyro_x + 2*(int)accel_y)/100;
+			serialPrintGyro(angle, 'a');
+			serialPrintGyro(gyro_x, 'g');
+			serialPrintGyro(accel_x, 'x');
+			serialPrintGyro(accel_y, 'y');
+			serialPrintGyro(accel_z, 'z');
+			newline();
+			
+		}
+		
 	}
 }

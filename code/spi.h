@@ -3,11 +3,11 @@
 
 #include "stm32l476xx.h" 
 
-#define L3GD20_CS_LOW 	GPIOD->ODR &= ~(1U << 7)
-#define L3GD20_CS_HIGH 	GPIOD->ODR |= (1U << 7) 
-
 void delay(uint32_t);
 void SPI_Init(void);
 uint8_t sendRecieve8(uint8_t data);
+//void send8(uint8_t data);
+uint8_t recieve8(void);
+uint8_t spi_read3Wire(void);
 	
 #endif /* __spi */

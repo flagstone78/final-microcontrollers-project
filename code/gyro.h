@@ -3,9 +3,13 @@
 
 #include "stm32l476xx.h" 
 #include "spi.h"
+#include "serial.h"
 
-#define L3GD20_STATUS_REG_ADDR 	0x27
-#define L3GD20_OUT_X_L_ADDR	0x28
+#define L3GD20_CS_LOW 	GPIOD->ODR &= ~(1U << 7)
+#define L3GD20_CS_HIGH 	GPIOD->ODR |= (1U << 7) 
+
+#define SPI1_CS_LOW 	GPIOE->ODR &= ~(1U << 12)
+#define SPI1_CS_HIGH 	GPIOE->ODR |= (1U << 12) 
 
 //L3GD20 gyro
 #define WHO_AM_I			0x0f
@@ -35,9 +39,9 @@
 #define INT1_TSH_ZL			0x37
 #define INT1_DURATION		0x38
 
-//void WriteGyroRegister(int , int);
-//void GYRO_IO_Read(uint8_t *pBuffer, uint8_t ReadADDR, uint8_t size);
+void GYRO_Init(void);
 void GYRO_IO_Read(uint8_t readADDR, unsigned int size, uint8_t *rxBuffer);
 void GYRO_IO_Write(uint8_t writeAddress, uint8_t size, uint8_t *txBuffer);
-	
+void printAllGyro(void);
+
 #endif /* __gyro */

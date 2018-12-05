@@ -60,12 +60,12 @@ void newline(){
 
 void SerialHex(uint8_t *txBuffer, uint8_t size){
 	uint8_t hex[size*4];
-	for(int i = 0; i<size*4; i += 4){
-		hex[i] = ' ';
-		hex[i+1] = 'x';
+	for(int i = 0; i<size; i ++){
+		hex[i*4] = ' ';
+		hex[i*4+1] = 'x';
 		uint8_t tens = txBuffer[i]/16;
-		hex[i+2] = charList[tens%16];
-		hex[i+3] = charList[txBuffer[i]%16];
+		hex[i*4+2] = charList[tens%16];
+		hex[i*4+3] = charList[txBuffer[i]%16];
 	}
 	serial(hex, size*4);
 }
