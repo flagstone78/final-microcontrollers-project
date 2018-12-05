@@ -65,50 +65,40 @@
 // PA3  = OPAMP1_VOUT (Joy Up)        PB0 = OPAMP2_VOUT (LCD SEG21)
 //
 //****************************************************************************************************************
+volatile double angle = 0;
+ 
+void timerAsetup(){
+	RCC->APB1ENR1 |= RCC_APB1ENR1_TIM3EN; //Enable timer 3 clock; 
+	TIM3->CR1 &= ~TIM_CR1_DIR; //Set Count direction up; 
+	TIM3->PSC &= ~TIM_PSC_PSC; //Clear timer prescaler; 
+	TIM3->PSC |= 1 & TIM_PSC_PSC; 
+	TIM3->ARR = 8000; //Set auto reload register 2ms; 
+	
+	// TIM2->BDTR |= TIM_BDTR_MOE; //main output enable;
+	// TIM2->CCMR1 &= ~TIM_CCMR1_OC1M; //Clear output and compare bits for channel 1;
+	// TIM2->CCMR1 |= TIM_CCMR_OC1M_0 | TIM_CCMR_OC1M_1; //Select toggle mode;
+	// TIM2 &= ~TIM1_CCER_CC1NP; //Select output polarity to active high;
+	// TIM2->CCER |= TIM1_CCER_CC1NE; //enable output for channel 1 to complementary output;
+	//NVIC_SetPriority(TIM3_IRQn, 1);
+	
+	TIM3->DIER |= TIM_DIER_UIE; //TIM_DIER_CC1IE; //Enable timer 3 interrupt;
+	TIM3->CR1 |= TIM_CR1_CEN; //Enable timer 3;
+	NVIC_EnableIRQ(TIM3_IRQn);
+}
 
-
-int main(void){
-	//clock change
-	//RCC->CR |= (RCC_CR_HSION);
-	//while( (RCC->CR & RCC_CR_HSIRDY) == 0);
-	stepper_Init();
-	//Systick_Initialization();
-	
-	SPI_Init();
-	
-	USART2_INIT();
-	uint8_t hi[2] = {'h','i'};
-	serial(hi,2);
-	delay(100000);
-	
-	GYRO_Init();
-	ACCEL_Init();
-	
-	
+void TIM3_IRQHandler(){//timer A interrupt (start ADC at 2ms)
+	int16_t gyro_x = 0;
+	uint8_t gyr[6];
+	//if((TIM3->SR & TIM_SR_UIF) != 0){ //clear interrupt
+	TIM3->SR &= ~TIM_SR_UIF;
+	//}
 	uint8_t status = 0;
-
-	uint8_t gyr[6]; //raw gyro data
-	uint8_t acc[6]; //raw accel data
-	
-	int16_t gyro_x = 0; //, gyro_y = 0, gyro_z = 0;
-	int16_t accel_x = 0, accel_y = 0, accel_z = 0;
-	//int32_t agyro_x = 0, agyro_y = 0, agyro_z = 0; //average
-	
-	setDirection(1); //make both wheels go the same direction
-	
-	int angle = 0;
-	
-	while(1){
-		//printAllGyro();
-		//printAllAccel();
-		
-		//GYRO
-		GYRO_IO_Read(STATUS_REG, 1, &status);
-		if((status & 0x08) == 0x08) {
-			GYRO_IO_Read(OUT_X_L, 2, gyr);
+	GYRO_IO_Read(STATUS_REG, 1, &status);
+	if((status & 0x08) == 0x08) {
+		GYRO_IO_Read(OUT_X_L, 2, gyr);
 			
 			//GYRO_IO_Read(gyr, L3GD20_OUT_X_L_ADDR, 6);
-			gyro_x = (int16_t) ((uint16_t) (gyr[1] <<8) + gyr[0])+130;
+		gyro_x = (int16_t) ((uint16_t) (gyr[1] <<8) + gyr[0])+130;
 			//gyro_y = (int16_t) ((uint16_t) (gyr[3] <<8) + gyr[2])-80;
 			//gyro_z = (int16_t) ((uint16_t) (gyr[5] <<8) + gyr[4]);
 
@@ -123,10 +113,52 @@ int main(void){
 			//serialPrintGyro(gyro_y, 'y');
 			//serialPrintGyro(gyro_z, 'z');
 			//newline();
-			
-			setDirection(angle);
-			Systick_Freq_Update(abs(angle));
+		angle += ((double)gyro_x*.1525); //scale to degrees
+		setDirection(angle);
+		serialPrintGyro(angle, 'a');
+		newline();
+			//Systick_Freq_Update(abs(angle));
 		}
+}
+
+int main(void){
+	//clock change
+	//RCC->CR |= (RCC_CR_HSION);
+	//while( (RCC->CR & RCC_CR_HSIRDY) == 0);
+	stepper_Init();
+	
+	//Systick_Initialization();
+	
+	SPI_Init();
+	
+	USART2_INIT();
+	uint8_t hi[2] = {'h','i'};
+	serial(hi,2);
+	delay(100000);
+	
+	GYRO_Init();
+	ACCEL_Init();
+	timerAsetup();
+	
+	uint8_t status = 0;
+
+	//raw gyro data
+	uint8_t acc[6]; //raw accel data
+	
+	 //, gyro_y = 0, gyro_z = 0;
+	int16_t accel_x = 0, accel_y = 0, accel_z = 0;
+	//int32_t agyro_x = 0, agyro_y = 0, agyro_z = 0; //average
+	
+	setDirection(1); //make both wheels go the same direction
+	
+	
+	
+	while(1){
+		//printAllGyro();
+		//printAllAccel();
+		
+		//GYRO
+	
 		
 		//ACCEL
 		ACCEL_IO_Read(STATUS_REG_A, 1, &status);
@@ -147,9 +179,9 @@ int main(void){
 			//agyro_y = (((int32_t)gyro_y) + agyro_y*9)/10;
 			//agyro_z = (((int32_t)gyro_z) + agyro_z*9)/10;
 
-			angle += (98*(int)gyro_x + 2*(int)accel_y)/100;
+			//angle += (98*(int)angle + 2*(int)accel_y)/100;
 			serialPrintGyro(angle, 'a');
-			serialPrintGyro(gyro_x, 'g');
+			
 			serialPrintGyro(accel_x, 'x');
 			serialPrintGyro(accel_y, 'y');
 			serialPrintGyro(accel_z, 'z');

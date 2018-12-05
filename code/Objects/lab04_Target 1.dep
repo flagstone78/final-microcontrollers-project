@@ -1,5 +1,5 @@
 Dependencies for Project 'lab04', Target 'Target 1': (DO NOT MODIFY !)
-F (.\main.c)(0x5C077AFB)(--c99 -c --cpu Cortex-M4.fp -D__EVAL -g -O0 --apcs=interwork --split_sections -I C:\Keil_v5\ARM\PACK\ARM\CMSIS\5.4.0\CMSIS\Include-I.\RTE\_Target_1-IC:\Keil_v5\ARM\PACK\Keil\STM32L4xx_DFP\2.0.0\Drivers\CMSIS\Device\ST\STM32L4xx\Include-IC:\Keil_v5\ARM\CMSIS\Include-D__UVISION_VERSION="526" -DSTM32L476xx-o .\objects\main.o --omf_browse .\objects\main.crf --depend .\objects\main.d)
+F (.\main.c)(0x5C0803C3)(--c99 -c --cpu Cortex-M4.fp -D__EVAL -g -O0 --apcs=interwork --split_sections -I C:\Keil_v5\ARM\PACK\ARM\CMSIS\5.4.0\CMSIS\Include-I.\RTE\_Target_1-IC:\Keil_v5\ARM\PACK\Keil\STM32L4xx_DFP\2.0.0\Drivers\CMSIS\Device\ST\STM32L4xx\Include-IC:\Keil_v5\ARM\CMSIS\Include-D__UVISION_VERSION="526" -DSTM32L476xx-o .\objects\main.o --omf_browse .\objects\main.crf --depend .\objects\main.d)
 I (stm32l476xx.h)(0x5BB67A20)
 I (C:\Keil_v5\ARM\PACK\ARM\CMSIS\5.4.0\CMSIS\Include\core_cm4.h)(0x5B623564)
 I (C:\Keil_v5\ARM\ARMCC\include\stdint.h)(0x599FA01E)
@@ -39,7 +39,7 @@ I (C:\Keil_v5\ARM\PACK\ARM\CMSIS\5.4.0\CMSIS\Include\mpu_armv7.h)(0x5B623564)
 I (C:\Keil_v5\ARM\PACK\Keil\STM32L4xx_DFP\2.0.0\Drivers\CMSIS\Device\ST\STM32L4xx\Include\system_stm32l4xx.h)(0x59A0A356)
 F (.\serial.h)(0x5C07238D)()
 F (.\spi.h)(0x5C0772DA)()
-F (.\gyro.c)(0x5C07495B)(--c99 -c --cpu Cortex-M4.fp -D__EVAL -g -O0 --apcs=interwork --split_sections -I C:\Keil_v5\ARM\PACK\ARM\CMSIS\5.4.0\CMSIS\Include-I.\RTE\_Target_1-IC:\Keil_v5\ARM\PACK\Keil\STM32L4xx_DFP\2.0.0\Drivers\CMSIS\Device\ST\STM32L4xx\Include-IC:\Keil_v5\ARM\CMSIS\Include-D__UVISION_VERSION="526" -DSTM32L476xx-o .\objects\gyro.o --omf_browse .\objects\gyro.crf --depend .\objects\gyro.d)
+F (.\gyro.c)(0x5C080288)(--c99 -c --cpu Cortex-M4.fp -D__EVAL -g -O0 --apcs=interwork --split_sections -I C:\Keil_v5\ARM\PACK\ARM\CMSIS\5.4.0\CMSIS\Include-I.\RTE\_Target_1-IC:\Keil_v5\ARM\PACK\Keil\STM32L4xx_DFP\2.0.0\Drivers\CMSIS\Device\ST\STM32L4xx\Include-IC:\Keil_v5\ARM\CMSIS\Include-D__UVISION_VERSION="526" -DSTM32L476xx-o .\objects\gyro.o --omf_browse .\objects\gyro.crf --depend .\objects\gyro.d)
 I (gyro.h)(0x5C074850)
 I (stm32l476xx.h)(0x5BB67A20)
 I (C:\Keil_v5\ARM\PACK\ARM\CMSIS\5.4.0\CMSIS\Include\core_cm4.h)(0x5B623564)

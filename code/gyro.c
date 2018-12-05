@@ -4,10 +4,10 @@ void GYRO_Init(){
 	L3GD20_CS_HIGH; //set chip select high
 	SPI1_CS_HIGH;
 	
-	/*//3-wire mode is entered by setting the bit SIM to ‘1’ in CTRL_REG4.
+	//3-wire mode is entered by setting the bit SIM to ‘1’ in CTRL_REG4.
 	
 	uint8_t val = 0;
-	val |= (1U << 0);  //3 wire spi mode
+	val &= ~(1U << 0);  //4 wire spi mode
 	val &= ~(1U << 1); //must be 0
 	val &= ~(1U << 2); //must be 0
 	val &= ~(1U << 3); //blank
@@ -19,7 +19,7 @@ void GYRO_Init(){
 	
 	val &= ~(1U << 6); //LSB at lower address
 	val &= ~(1U << 7); //continuous update
-	GYRO_IO_Write(CTRL_REG4, 1, &val);*/
+	GYRO_IO_Write(CTRL_REG4, 1, &val);
 	
 	uint8_t ctrl_reg_val = 0xff; // power up gyro at full speed, all axes.
 	GYRO_IO_Write(CTRL_REG1, 1, &ctrl_reg_val);
