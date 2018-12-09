@@ -13,7 +13,7 @@ void stepper_Init(void){
   GPIOE->OTYPER &= ~(GPIO_OTYPER_OT_15 | GPIO_OTYPER_OT_13 | GPIO_OTYPER_OT_12 | GPIO_OTYPER_OT_14);
 }
 
-int deadzone = 20;
+int deadzone = 0;
 void setDirection(int dir){
 	if(dir > deadzone){
 		GPIOE->ODR |= (1U << 15 | 1U << 13); //set dir pin PE15 abd 13	
@@ -23,6 +23,5 @@ void setDirection(int dir){
 }
 
 void step(void){
-	GPIOE->ODR ^= (1U << 12); //toggle step pin PE12 and 14
-	GPIOE->ODR ^= (1U << 14);
+	GPIOE->ODR ^= ((1U << 12) | (1U << 14)); //toggle step pin PE12 and 14
 }

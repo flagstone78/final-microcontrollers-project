@@ -8,9 +8,6 @@
 #define L3GD20_CS_LOW 	GPIOD->ODR &= ~(1U << 7)
 #define L3GD20_CS_HIGH 	GPIOD->ODR |= (1U << 7) 
 
-#define SPI1_CS_LOW 	GPIOE->ODR &= ~(1U << 12)
-#define SPI1_CS_HIGH 	GPIOE->ODR |= (1U << 12) 
-
 //L3GD20 gyro
 #define WHO_AM_I			0x0f
 #define CTRL_REG1			0x20

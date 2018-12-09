@@ -5,6 +5,7 @@
 #include "Accelerometer.h"
 #include "stepper.h"
 #include "systick.h"
+#include <math.h>
 //*************************************  32L476GDISCOVERY ***************************************************************************
 // STM32L4:  STM32L476VGT6 MCU = ARM Cortex-M4 + FPU + DSP, 
 //           LQFP100, 1 MB of Flash, 128 KB of SRAM
@@ -66,68 +67,154 @@
 //
 //****************************************************************************************************************
 volatile double angle = 0;
+volatile double gyroAngle = 0;
+volatile double accelAngle = 0;
+volatile double intAngle = 0;
+
+#define gyroSensitivity 250.0 //degrees per second
+#define clkFreq 16000000 //Hz
+#define timerFreq 10.0 //Hz
+#define timerDiv clkFreq/timerFreq
+#define degPersecondPerUnit gyroSensitivity/32768.0
+#define PI 3.14159265358979323846
+#define convertGryoToMilliRad (degPersecondPerUnit*PI*1000)/(180*timerFreq)
  
-void timerAsetup(){
+#define minTick 30
+void setSpeed(double hertz){
+	if(hertz < 0){ hertz = -hertz;}
+	
+	unsigned int ticks = (clkFreq/hertz);
+	if(ticks < minTick){ticks = minTick;} //prevent too fast
+	//else if(ticks > 0xFFFF){ticks = 0xFFFE;} //prevent overflow of LOAD register
+	TIM2->ARR = ticks;
+	if(TIM2->CNT > TIM2->ARR){
+		TIM2->EGR |= TIM_EGR_UG;
+	} //force event
+} 
+ 
+void timer3setup(){
 	RCC->APB1ENR1 |= RCC_APB1ENR1_TIM3EN; //Enable timer 3 clock; 
 	TIM3->CR1 &= ~TIM_CR1_DIR; //Set Count direction up; 
 	TIM3->PSC &= ~TIM_PSC_PSC; //Clear timer prescaler; 
-	TIM3->PSC |= 1 & TIM_PSC_PSC; 
-	TIM3->ARR = 8000; //Set auto reload register 2ms; 
+	TIM3->PSC |= 0 & TIM_PSC_PSC; //0 prescaler
+	TIM3->ARR = timerDiv; //Set auto reload register 2ms for 500hz; 
+	
+	TIM3->DIER |= TIM_DIER_UIE; //TIM_DIER_CC1IE; //Enable timer 3 interrupt;
+	TIM3->CR1 |= TIM_CR1_CEN; //Enable timer 3;
+	//NVIC_SetPriority(TIM3_IRQn, (1<<__NVIC_PRIO_BITS)-1); //set systick priority to least important //check if nescessary
+	NVIC_EnableIRQ(TIM3_IRQn);
+}
+
+uint8_t alldata[33];
+volatile int16_t accel_x = 0;
+volatile int16_t accel_y = 0;
+volatile int16_t accel_z = 0;
+
+void TIM3_IRQHandler(){//timer A interrupt (start ADC at 2ms)
+
+	//if((TIM3->SR & TIM_SR_UIF) != 0){ //clear interrupt
+	TIM3->SR &= ~TIM_SR_UIF;
+	//}
+	
+	uint8_t status = 0;
+	
+	//GYRO
+	double gyroRead = 0;
+	
+	GYRO_IO_Read(STATUS_REG, 1, &status);
+	if((status & 0x08) == 0x08) {
+		int16_t gyro_x = 0;
+		uint8_t gyr[6] = {0};
+		
+		GYRO_IO_Read(OUT_X_L, 2, gyr);
+		gyro_x = (int16_t) ((uint16_t) (gyr[1] <<8) + gyr[0])+59; //130
+		
+		gyroRead = ((double)gyro_x*convertGryoToMilliRad); //scale to degrees
+		gyroAngle +=  gyroRead;
+	}
+	
+	//ACCEL
+
+	/*ACCEL_IO_Read(STATUS_REG_A, 1, &status);
+
+	if((status & 0x08) == 0x08) {
+		uint8_t acc[6] = {0};
+		int16_t accel_y = 0;
+		int16_t accel_z = 0;
+		
+		ACCEL_IO_Read(OUT_Y_L_A, 1, &acc[2]);
+		
+		ACCEL_IO_Read(OUT_Y_H_A, 1, &acc[3]);
+		
+		ACCEL_IO_Read(OUT_Z_L_A, 1, &acc[4]);
+		
+		ACCEL_IO_Read(OUT_Z_H_A, 1, &acc[5]);
+
+		accel_y = (int16_t) ((uint16_t) (acc[3] <<8) + acc[2]);
+		accel_z = (int16_t) ((uint16_t) (acc[5] <<8) + acc[4]);
+
+		accelAngle = (atan2(-accel_z, accel_y)*1000);//-48; //tip forward is +
+	}*/
+
+	ACCEL_IO_Read(STATUS_REG_A, 1, &status);
+	if((status & 0x08) == 0x08) {
+		for(int i = 0; i<33; i++){
+			ACCEL_IO_Read(ACT_THS_A+i, 1, &alldata[i]);
+		}
+		accel_x = (int16_t) (((uint16_t) (alldata[11]) <<8) + alldata[10]);
+		accel_y = (int16_t) (((uint16_t) (alldata[13]) <<8) + alldata[12]);
+		accel_z = (int16_t) (((uint16_t) (alldata[15]) <<8) + alldata[14]);
+  }
+	accelAngle = (atan2(-accel_z, accel_y)*1000);//-48; //tip forward is +
+	
+	angle = (995*(angle+gyroRead) + 5*accelAngle)/1000;
+	intAngle += angle; //I part
+	
+	setDirection(angle);
+	//setSpeed(abs((int)angle)*35);
+	setSpeed((angle*100)+(intAngle*0.0)-(gyroRead*0));
+}
+
+void Timer2setup(){
+	
+	RCC->APB1ENR1 |= RCC_APB1ENR1_TIM2EN; //Enable timer 2 clock; 
+	TIM2->CR1 &= ~TIM_CR1_DIR; //Set Count direction up; 
+	TIM2->PSC &= ~TIM_PSC_PSC; //Clear timer prescaler; 
+	TIM2->PSC |= (3 & TIM_PSC_PSC); //Set timer prescaler to 100; 
+	TIM2->ARR = 2000; //Set auto reload register; 
 	
 	// TIM2->BDTR |= TIM_BDTR_MOE; //main output enable;
 	// TIM2->CCMR1 &= ~TIM_CCMR1_OC1M; //Clear output and compare bits for channel 1;
 	// TIM2->CCMR1 |= TIM_CCMR_OC1M_0 | TIM_CCMR_OC1M_1; //Select toggle mode;
 	// TIM2 &= ~TIM1_CCER_CC1NP; //Select output polarity to active high;
 	// TIM2->CCER |= TIM1_CCER_CC1NE; //enable output for channel 1 to complementary output;
-	//NVIC_SetPriority(TIM3_IRQn, 1);
+	//NVIC_SetPriority(TIM2_IRQn,0);
+	TIM2->DIER |= TIM_DIER_UIE; //TIM_DIER_CC1IE; //Enable timer 2 interrupt;
+	TIM2->CR1 |= TIM_CR1_CEN; //Enable timer 2;
+	NVIC_EnableIRQ(TIM2_IRQn); //Enable interrupt
 	
-	TIM3->DIER |= TIM_DIER_UIE; //TIM_DIER_CC1IE; //Enable timer 3 interrupt;
-	TIM3->CR1 |= TIM_CR1_CEN; //Enable timer 3;
-	NVIC_EnableIRQ(TIM3_IRQn);
 }
 
-void TIM3_IRQHandler(){//timer A interrupt (start ADC at 2ms)
-	int16_t gyro_x = 0;
-	uint8_t gyr[6];
-	//if((TIM3->SR & TIM_SR_UIF) != 0){ //clear interrupt
-	TIM3->SR &= ~TIM_SR_UIF;
+void TIM2_IRQHandler(){//timer B interrupt (update buzzer frequency 500ms)
+	//if((TIM2->SR & TIM_SR_UIF) != 0){ //clear interrupt flag
+	TIM2->SR &= ~TIM_SR_UIF;
 	//}
-	uint8_t status = 0;
-	GYRO_IO_Read(STATUS_REG, 1, &status);
-	if((status & 0x08) == 0x08) {
-		GYRO_IO_Read(OUT_X_L, 2, gyr);
-			
-			//GYRO_IO_Read(gyr, L3GD20_OUT_X_L_ADDR, 6);
-		gyro_x = (int16_t) ((uint16_t) (gyr[1] <<8) + gyr[0])+130;
-			//gyro_y = (int16_t) ((uint16_t) (gyr[3] <<8) + gyr[2])-80;
-			//gyro_z = (int16_t) ((uint16_t) (gyr[5] <<8) + gyr[4]);
-
-			//agyro_x = (((int32_t)gyro_x) + agyro_x*9)/10;
-			//agyro_y = (((int32_t)gyro_y) + agyro_y*9)/10;
-			//agyro_z = (((int32_t)gyro_z) + agyro_z*9)/10;
-			
-
-			
-			//serialPrintGyro(angle, 'x');
-			//serialPrintGyro(gyro_x, 'x');
-			//serialPrintGyro(gyro_y, 'y');
-			//serialPrintGyro(gyro_z, 'z');
-			//newline();
-		angle += ((double)gyro_x*.1525); //scale to degrees
-		setDirection(angle);
-		serialPrintGyro(angle, 'a');
-		newline();
-			//Systick_Freq_Update(abs(angle));
-		}
+	step();
 }
+
+
 
 int main(void){
 	//clock change
+	
 	//RCC->CR |= (RCC_CR_HSION);
 	//while( (RCC->CR & RCC_CR_HSIRDY) == 0);
-	stepper_Init();
+	//RCC->CR &= ~(RCC_CR_MSION);
+	RCC->CR &= ~(RCC_CR_MSIRANGE);
+	RCC->CR |= (RCC_CR_MSIRANGE_8);
+	RCC->CR |= (RCC_CR_MSIRGSEL);
 	
-	//Systick_Initialization();
+	stepper_Init();
 	
 	SPI_Init();
 	
@@ -138,56 +225,28 @@ int main(void){
 	
 	GYRO_Init();
 	ACCEL_Init();
-	timerAsetup();
 	
-	uint8_t status = 0;
-
-	//raw gyro data
-	uint8_t acc[6]; //raw accel data
-	
-	 //, gyro_y = 0, gyro_z = 0;
-	int16_t accel_x = 0, accel_y = 0, accel_z = 0;
-	//int32_t agyro_x = 0, agyro_y = 0, agyro_z = 0; //average
-	
-	setDirection(1); //make both wheels go the same direction
-	
-	
+	timer3setup(); //reading values
+	Timer2setup(); //stepping
 	
 	while(1){
+		SerialHex(alldata, 33);
+			
+		serialPrintGyro(accel_x, 'x');
+		serialPrintGyro(accel_y, 'y');
+		serialPrintGyro(accel_z, 'z');
+		
+		if(1){
+			serialPrintGyro(accelAngle, 'c');
+			serialPrintGyro(gyroAngle, 'g');
+			serialPrintGyro(angle, 'a');
+		}
 		//printAllGyro();
+
 		//printAllAccel();
 		
-		//GYRO
-	
+		newline();
 		
-		//ACCEL
-		ACCEL_IO_Read(STATUS_REG_A, 1, &status);
-		if((status & 0x08) == 0x08) {
-			ACCEL_IO_Read(OUT_X_L_A, 1, &acc[0]);
-			ACCEL_IO_Read(OUT_X_H_A, 1, &acc[1]);
-			ACCEL_IO_Read(OUT_Y_L_A, 1, &acc[2]);
-			ACCEL_IO_Read(OUT_Y_H_A, 1, &acc[3]);
-			ACCEL_IO_Read(OUT_Z_L_A, 1, &acc[4]);
-			ACCEL_IO_Read(OUT_Z_H_A, 1, &acc[5]);
-			//SerialHex(acc, 6);
-			//GYRO_IO_Read(gyr, L3GD20_OUT_X_L_ADDR, 6);
-			accel_x = (int16_t) ((uint16_t) (acc[1] <<8) + acc[0]);
-			accel_y = (int16_t) ((uint16_t) (acc[3] <<8) + acc[2]);
-			accel_z = (int16_t) ((uint16_t) (acc[5] <<8) + acc[4]);
-
-			//agyro_x = (((int32_t)gyro_x) + agyro_x*9)/10;
-			//agyro_y = (((int32_t)gyro_y) + agyro_y*9)/10;
-			//agyro_z = (((int32_t)gyro_z) + agyro_z*9)/10;
-
-			//angle += (98*(int)angle + 2*(int)accel_y)/100;
-			serialPrintGyro(angle, 'a');
-			
-			serialPrintGyro(accel_x, 'x');
-			serialPrintGyro(accel_y, 'y');
-			serialPrintGyro(accel_z, 'z');
-			newline();
-			
-		}
-		
+		//printAllAccelAxis();
 	}
 }

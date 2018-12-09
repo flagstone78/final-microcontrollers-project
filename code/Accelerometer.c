@@ -9,7 +9,7 @@ void ACCEL_Init(){
 	val |= (1U << 0); //enable 3 wire mode
 	val &= ~(1U << 1); //disable I2C
 	val |= (1U << 2); //enable auto increment when reading 
-	val &= ~(1U << 3); //auto set bandwidth
+	val |= (1U << 3); //manual set bandwidth
 	
 	// set full scale to +-2g
 	val &= ~(1U << 4); 
@@ -17,7 +17,7 @@ void ACCEL_Init(){
 	
 	//band width selection
 	val &= ~(1U << 6); 
-	val &= ~(1U << 7); //enable high resolution (might not need)
+	val &= ~(1U << 7); //400Hz anti aliasing bandwidth
 	ACCEL_IO_Write(CTRL_REG4_A, 1, &val);
 	
 	//CTRL_REG1_A settings
@@ -46,6 +46,7 @@ void ACCEL_IO_Read(uint8_t readADDR, unsigned int size, uint8_t *rxBuffer){
 	delay(10);
 	
 	sendRecieve8(readADDR); //send address, ingore input
+	delay(1);
 	for(int i = 0; i < size; i++){
 		//rxBuffer[i] = sendRecieve8(0xff); //send a bunch of dummy 0xff and read the response
 		rxBuffer[i] = spi_read3Wire(); //half duplex recieve
@@ -73,15 +74,26 @@ void ACCEL_IO_Write(uint8_t writeAddress, uint8_t size, uint8_t *txBuffer){
 	delay(10);
 }
 
-void printAllAccel(){
+void printAllAccel(void){
 	uint8_t data = 0;
 	ACCEL_IO_Read(WHO_AM_I, 1, &data);
 	
-	uint8_t alldata[34];
-	for(int i = 0; i<34; i++){
+	uint8_t alldata[33];
+	for(int i = 0; i<33; i++){
 		ACCEL_IO_Read(ACT_THS_A+i, 1, &alldata[i]);
 	}
 	SerialHex(&data, 1);
-	SerialHex(alldata, 34);
-	newline();
+	SerialHex(alldata, 33);
+	int16_t accel_x = (int16_t) ((uint16_t) (alldata[11] <<8) + alldata[10]);
+	int16_t accel_y = (int16_t) ((uint16_t) (alldata[13] <<8) + alldata[12]);
+	int16_t accel_z = (int16_t) ((uint16_t) (alldata[15] <<8) + alldata[14]);
+		
+	
+	serialPrintGyro(accel_x, 'x');
+	serialPrintGyro(accel_y, 'y');
+	serialPrintGyro(accel_z, 'z');
+	
+	int test = (atan2(-accel_z, accel_y)*1000)-78; //tip forward is +
+	serialPrintGyro(test, 'a');
+	//newline();
 }

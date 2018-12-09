@@ -1,6 +1,6 @@
 #include "serial.h"
 const char charList[] = {'0','1','2','3','4','5','6','7','8','9','A','B','C','D','E','F'};
-uint8_t newL[] = {' ', '|', '\n', '\r'};
+uint8_t newL[] = {' ', ' ', '\n', '\r'};
 
 void UARTPinSetup(){
 	//UART setup
@@ -32,7 +32,7 @@ void USART2_INIT(){
 	USART2->CR2 &= ~USART_CR2_STOP;		//Select 1 stop bit
 	USART2->CR1 &= ~USART_CR1_PCE;		//Set parity to no parity bit
 	USART2->CR1 &= ~USART_CR1_OVER8;	//Set oversampling to 16
-	USART2->BRR = (0x1A0);										//Set baud rate to 9600 using APB frequency of 4MHz
+	USART2->BRR = (0x8A);										//Set baud rate to 9600 using APB frequency of 4MHz
 	USART2->CR1 |= (USART_CR1_TE | USART_CR1_RE); 	//Enable transmission and reception
 	USART2->CR1 |= USART_CR1_UE;	//Enable usart
 	while((USART2->ISR & USART_ISR_TEACK) == 0);//Verify that the USART is ready for transmission
@@ -77,17 +77,17 @@ void serialPrintGyro(int32_t in, char label ){
 	hex[2] = ' ';
 	if(in < 0){
 		in = -in; //negate
-		hex[2] = '-'; //minus sign
+		hex[3] = '-'; //minus sign
+	} else {
+		hex[3] = ' ';
 	}
 	
 	uint8_t charNum;
-	for(int i = 7; i>2; i--){
+	for(int i = 9; i>3; i--){
 		charNum = in % 10;
 		hex[i] = charList[charNum];
 		in /= 10;
 	}
-	hex[8] = ' ';
-	hex[9] = ' ';
 	hex[10] = ' ';
 	hex[11] = ' ';
 	

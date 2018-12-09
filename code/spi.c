@@ -75,7 +75,7 @@ void SPI_PinSetup(){
 	//Set PE0 otypr to push/pull (0x0)
   GPIOE->OTYPER &= ~GPIO_OTYPER_OT_0;
 	
-	//SPI1
+	/*//SPI1
 	//spi setup	--------------------------------
 	RCC-> AHB2ENR |= RCC_AHB2ENR_GPIODEN ;//Enable GPIO D clock
 		
@@ -95,7 +95,7 @@ void SPI_PinSetup(){
 	GPIOE->ODR |= GPIO_ODR_OD12;
 	
 	//Set PD7 otypr to push/pull (0x0)
-  GPIOE->OTYPER &= ~GPIO_OTYPER_OT_12;
+  GPIOE->OTYPER &= ~GPIO_OTYPER_OT_12;*/
 }
 
 void SPI_Init(){ //pg 1451
@@ -134,7 +134,7 @@ void SPI_Init(){ //pg 1451
 	
 	SPI2->CR1 |= SPI_CR1_SPE; //enable
 	
-	//SPI1 ------------------------------
+	/*//SPI1 ------------------------------
 	// Turn on SPI1 clock
 	RCC->APB2ENR |= RCC_APB2ENR_SPI1EN;
 	// reset the SPI1 interface
@@ -155,13 +155,13 @@ void SPI_Init(){ //pg 1451
 	SPI1->CR1 |= SPI_CR1_SSI; //internal slave select
 	SPI1->CR1 |= SPI_CR1_SSM; //software slave managment
 	
-	SPI1->CR1 |= SPI_CR1_SPE; //enable
+	SPI1->CR1 |= SPI_CR1_SPE; //enable*/
 }
 
 //full duplex
 uint8_t sendRecieve8(uint8_t data){
 	*((uint8_t*)&SPI2->DR) = (uint8_t) data; //write only 8 bit to DR; otherwise data packing is used
-	int timeout = 100000;
+	int timeout = 100;
 	while ((timeout--) && ((SPI2->SR & SPI_SR_BSY)!=0) ); // wait for tx complete
 	
 	return *((uint8_t*)&SPI2->DR); //read an 8 bit value
@@ -172,7 +172,7 @@ uint8_t recieve8(void){
 	SPI2->CR2 |= SPI_CR1_BIDIMODE;//set bidirectional mode
 	SPI2->CR2 &= ~SPI_CR1_BIDIOE;//set spi line to rx mode to start clk
 
-	int timeout = 100000;
+	int timeout = 100;
 	while ((timeout--) && ((SPI2->SR & SPI_SR_RXNE) != SPI_SR_RXNE)); // wait for read to complete
 	
 	SPI2->CR2 |= SPI_CR1_BIDIOE;//set spi line to tx mode to stop clk
@@ -184,8 +184,8 @@ uint8_t spi_read3Wire(){
 	uint8_t out = 0;
 	BitBangSPI_PinSetup(0); //set bitbang mode
 	for(int i = 0; i<8; i++){
+		out = out << 1; //shift output over to read new bit
 		GPIOD->ODR &= ~GPIO_ODR_OD1; //low clock
-		out = out << 1;
 		if( (GPIOD->IDR & GPIO_IDR_ID4) > 0) {out += 1;}
 		GPIOD->ODR |= GPIO_ODR_OD1; //high clock
 	}

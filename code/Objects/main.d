@@ -11,6 +11,6 @@
 .\objects\main.o: spi.h
 .\objects\main.o: gyro.h
 .\objects\main.o: Accelerometer.h
+.\objects\main.o: C:\Keil_v5\ARM\ARMCC\Bin\..\include\math.h
 .\objects\main.o: stepper.h
 .\objects\main.o: systick.h
-.\objects\main.o: C:\Keil_v5\ARM\ARMCC\Bin\..\include\stdlib.h

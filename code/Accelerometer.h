@@ -4,6 +4,7 @@
 #include "stm32l476xx.h" 
 #include "spi.h"
 #include "serial.h"
+#include <math.h>
 
 #define LSM303CTR_CS_LOW 	    GPIOE->ODR &= ~(1U << 0)
 #define LSM303CTR_CS_HIGH 	  GPIOE->ODR |= (1U << 0) 
@@ -51,3 +52,4 @@ void ACCEL_IO_Write(uint8_t writeAddress, uint8_t size, uint8_t *txBuffer);
 void printAllAccel(void);
 	
 #endif /* __accel */
+

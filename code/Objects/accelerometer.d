@@ -10,3 +10,4 @@
 .\objects\accelerometer.o: C:\Keil_v5\ARM\PACK\Keil\STM32L4xx_DFP\2.0.0\Drivers\CMSIS\Device\ST\STM32L4xx\Include\system_stm32l4xx.h
 .\objects\accelerometer.o: spi.h
 .\objects\accelerometer.o: serial.h
+.\objects\accelerometer.o: C:\Keil_v5\ARM\ARMCC\Bin\..\include\math.h

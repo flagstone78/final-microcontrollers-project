@@ -2,7 +2,6 @@
 
 void GYRO_Init(){
 	L3GD20_CS_HIGH; //set chip select high
-	SPI1_CS_HIGH;
 	
 	//3-wire mode is entered by setting the bit SIM to ‘1’ in CTRL_REG4.
 	
@@ -33,7 +32,6 @@ void GYRO_IO_Read(uint8_t readADDR, unsigned int size, uint8_t *rxBuffer){
 	
 	//set chip select low at the beginning of the transmission
 	L3GD20_CS_LOW; // 0 = SPI
-	SPI1_CS_LOW;
 	delay(10);
 	
 	sendRecieve8(readADDR); //send address, ingore input
@@ -43,7 +41,6 @@ void GYRO_IO_Read(uint8_t readADDR, unsigned int size, uint8_t *rxBuffer){
 
 	//release chip select
 	L3GD20_CS_HIGH;
-	SPI1_CS_HIGH;
 	delay(10);
 }
 
@@ -52,7 +49,6 @@ void GYRO_IO_Write(uint8_t writeAddress, uint8_t size, uint8_t *txBuffer){
 	if(size > 1) {writeAddress |= (1U << 6);} //multiple byte mode
 	//set chip select low at the beginning of the transmission
 	L3GD20_CS_LOW; // 0 = SPI
-	SPI1_CS_LOW;
 	delay(10);
 	
 	sendRecieve8(writeAddress); //send address, ingore input
