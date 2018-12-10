@@ -105,6 +105,7 @@ void setDirection(int dir){
 #define minTick 40
 void setSpeed(double hertz){
 	if(hertz < 0){ hertz = -hertz;}
+	if(hertz == 0){hertz += 1;}
 	
 	unsigned int ticks = (clkFreq/(10*hertz));
 	if(ticks < minTick){ticks = minTick;} //prevent too fast
@@ -167,9 +168,9 @@ void initMPU(void){
 
 void initBot(){
 	HAL_UART_Transmit(&huart2, initializarionMSG, 7, 10); //init complete
+	initMPU(); //INITALIZE MPU6050
 	HAL_TIM_Base_Start_IT(&htim2); //start timer 2
 	HAL_TIM_Base_Start_IT(&htim3); //start timer 3
-	initMPU(); //INITALIZE MPU6050
 }
 
 void processData(void){
@@ -194,11 +195,11 @@ void processData(void){
 	
 	setDirection(angle);
 	//setSpeed(abs((int)angle)*35);
-	setSpeed((angle*100)); //currently just p
+	setSpeed((angle*0)); //currently just p
 }
 
 void printStuff(void){
-		
+	//processData();
 	//SerialNum(accel_x, 'x');
 	////SerialNum(accel_y, 'y');
 	//SerialNum(accel_z, 'z');
