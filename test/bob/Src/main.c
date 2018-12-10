@@ -57,7 +57,7 @@ UART_HandleTypeDef huart2;
 #define MPU6050_ADDR 0x69<<1
 #define gyroSensitivity 250.0 //degrees per second
 #define clkFreq 40000000 //Hz
-#define timerFreq 250.0 //Hz
+#define timerFreq 500.0 //Hz
 #define timerDiv clkFreq/timerFreq
 #define degPersecondPerUnit gyroSensitivity/32768.0
 #define PI 3.14159265358979323846
@@ -92,6 +92,32 @@ static void MX_USART2_UART_Init(void);
 /* USER CODE END PFP */
 
 /* USER CODE BEGIN 0 */
+
+int deadzone = 0;
+void setDirection(int dir){
+	if(dir > deadzone){
+		GPIOE->ODR |= (1U << 15 | 1U << 13); //set dir pin PE15 abd 13	
+	} else if(dir < -deadzone) {
+		GPIOE->ODR &= ~(1U << 15 | 1U << 13); //clear dir pin E15 and 13
+	}
+}
+
+#define minTick 40
+void setSpeed(double hertz){
+	if(hertz < 0){ hertz = -hertz;}
+	
+	unsigned int ticks = (clkFreq/(10*hertz));
+	if(ticks < minTick){ticks = minTick;} //prevent too fast
+	//else if(ticks > 0xFFFF){ticks = 0xFFFE;} //prevent overflow of LOAD register
+	TIM2->ARR = ticks;
+	if(TIM2->CNT > TIM2->ARR){
+		TIM2->EGR |= TIM_EGR_UG;
+	} //force event
+} 
+
+void step(void){
+	GPIOE->ODR ^= ((1U << 12) | (1U << 14)); //toggle step pin PE12 and 14
+}
 
 void newline(){
 	HAL_UART_Transmit(&huart2, newL, 4, 10); //init complete
@@ -142,10 +168,12 @@ void initMPU(void){
 void initBot(){
 	HAL_UART_Transmit(&huart2, initializarionMSG, 7, 10); //init complete
 	HAL_TIM_Base_Start_IT(&htim2); //start timer 2
+	HAL_TIM_Base_Start_IT(&htim3); //start timer 3
 	initMPU(); //INITALIZE MPU6050
 }
 
 void processData(void){
+	//translate data
 	accel_x = (int16_t) (((uint16_t) (rawData[0]) <<8) + rawData[1]);
 	//accel_y = (int16_t) (((uint16_t) (rawData[2]) <<8) + rawData[3]);
 	accel_z = (int16_t) (((uint16_t) (rawData[4]) <<8) + rawData[5]);
@@ -154,6 +182,9 @@ void processData(void){
 	gyro_y = (int16_t) (((uint16_t) (rawData[10]) <<8) + rawData[11]);
 	//gyro_z = (int16_t) (((uint16_t) (rawData[12]) <<8) + rawData[13])+550;
 	
+	//read data from MPU6050 non blocking so that it is ready for next time
+	HAL_I2C_Mem_Read_IT(&hi2c1, MPU6050_ADDR, 0x3B, I2C_MEMADD_SIZE_8BIT, rawData, 14);
+	
 	//data processing
 	accelAngle = (atan2(-accel_x, accel_z)*1000);//-48; //tip forward is +
 	gyroRead = ((double)gyro_y*convertGryoToMilliRad); //scale to degrees
@@ -161,8 +192,9 @@ void processData(void){
 
 	angle = (995*(angle+gyroRead) + 5*accelAngle)/1000;
 	
-	//HAL_Delay(10);
-	HAL_I2C_Mem_Read_IT(&hi2c1, MPU6050_ADDR, 0x3B, I2C_MEMADD_SIZE_8BIT, rawData, 14);
+	setDirection(angle);
+	//setSpeed(abs((int)angle)*35);
+	setSpeed((angle*100)); //currently just p
 }
 
 void printStuff(void){
@@ -185,9 +217,9 @@ void printStuff(void){
 //timer events
 void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim){
 	if(htim->Instance == TIM2){
-		//uint8_t str[] = "tim2\r\n";
-		//HAL_UART_Transmit(&huart2, str, 6, 6);
-		
+		step();
+	}
+	if(htim->Instance == TIM3){		
 		processData();
 	}
 }
@@ -358,9 +390,9 @@ static void MX_TIM2_Init(void)
   TIM_MasterConfigTypeDef sMasterConfig;
 
   htim2.Instance = TIM2;
-  htim2.Init.Prescaler = 159;
+  htim2.Init.Prescaler = 9;
   htim2.Init.CounterMode = TIM_COUNTERMODE_UP;
-  htim2.Init.Period = 999;
+  htim2.Init.Period = 999999;
   htim2.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
   htim2.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
   if (HAL_TIM_Base_Init(&htim2) != HAL_OK)
@@ -391,9 +423,9 @@ static void MX_TIM3_Init(void)
   TIM_MasterConfigTypeDef sMasterConfig;
 
   htim3.Instance = TIM3;
-  htim3.Init.Prescaler = 2083;
+  htim3.Init.Prescaler = 79;
   htim3.Init.CounterMode = TIM_COUNTERMODE_UP;
-  htim3.Init.Period = 0;
+  htim3.Init.Period = 999;
   htim3.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
   htim3.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
   if (HAL_TIM_Base_Init(&htim3) != HAL_OK)
