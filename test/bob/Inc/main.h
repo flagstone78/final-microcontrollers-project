@@ -44,7 +44,7 @@
 /* Includes ------------------------------------------------------------------*/
 
 /* USER CODE BEGIN Includes */
-
+#include "stm32l4xx_hal.h"
 /* USER CODE END Includes */
 
 /* Private define ------------------------------------------------------------*/
@@ -57,6 +57,7 @@
 /* #define USE_FULL_ASSERT    1U */
 
 /* USER CODE BEGIN Private defines */
+
 
 /* USER CODE END Private defines */
 

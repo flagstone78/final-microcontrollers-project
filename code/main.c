@@ -72,8 +72,8 @@ volatile double accelAngle = 0;
 volatile double intAngle = 0;
 
 #define gyroSensitivity 250.0 //degrees per second
-#define clkFreq 16000000 //Hz
-#define timerFreq 10.0 //Hz
+#define clkFreq 40000000 //Hz
+#define timerFreq 500.0 //Hz
 #define timerDiv clkFreq/timerFreq
 #define degPersecondPerUnit gyroSensitivity/32768.0
 #define PI 3.14159265358979323846
@@ -135,7 +135,7 @@ void TIM3_IRQHandler(){//timer A interrupt (start ADC at 2ms)
 	
 	//ACCEL
 
-	/*ACCEL_IO_Read(STATUS_REG_A, 1, &status);
+	ACCEL_IO_Read(STATUS_REG_A, 1, &status);
 
 	if((status & 0x08) == 0x08) {
 		uint8_t acc[6] = {0};
@@ -154,9 +154,9 @@ void TIM3_IRQHandler(){//timer A interrupt (start ADC at 2ms)
 		accel_z = (int16_t) ((uint16_t) (acc[5] <<8) + acc[4]);
 
 		accelAngle = (atan2(-accel_z, accel_y)*1000);//-48; //tip forward is +
-	}*/
+	}
 
-	ACCEL_IO_Read(STATUS_REG_A, 1, &status);
+	/*ACCEL_IO_Read(STATUS_REG_A, 1, &status);
 	if((status & 0x08) == 0x08) {
 		for(int i = 0; i<33; i++){
 			ACCEL_IO_Read(ACT_THS_A+i, 1, &alldata[i]);
@@ -166,7 +166,7 @@ void TIM3_IRQHandler(){//timer A interrupt (start ADC at 2ms)
 		accel_z = (int16_t) (((uint16_t) (alldata[15]) <<8) + alldata[14]);
   }
 	accelAngle = (atan2(-accel_z, accel_y)*1000);//-48; //tip forward is +
-	
+	*/
 	angle = (995*(angle+gyroRead) + 5*accelAngle)/1000;
 	intAngle += angle; //I part
 	
@@ -216,37 +216,39 @@ int main(void){
 	
 	stepper_Init();
 	
-	SPI_Init();
+	//SPI_Init();
 	
 	USART2_INIT();
 	uint8_t hi[2] = {'h','i'};
 	serial(hi,2);
-	delay(100000);
 	
 	GYRO_Init();
 	ACCEL_Init();
 	
 	timer3setup(); //reading values
-	Timer2setup(); //stepping
+	//Timer2setup(); //stepping
 	
 	while(1){
-		SerialHex(alldata, 33);
+		//SerialHex(alldata, 33);
 			
-		serialPrintGyro(accel_x, 'x');
-		serialPrintGyro(accel_y, 'y');
-		serialPrintGyro(accel_z, 'z');
+		//serialPrintGyro(accel_x, 'x');
+		//serialPrintGyro(accel_y, 'y');
+		//serialPrintGyro(accel_z, 'z');
 		
-		if(1){
+		if(0){
 			serialPrintGyro(accelAngle, 'c');
 			serialPrintGyro(gyroAngle, 'g');
 			serialPrintGyro(angle, 'a');
 		}
 		//printAllGyro();
 
-		//printAllAccel();
+		printAllAccel();
 		
 		newline();
 		
 		//printAllAccelAxis();
 	}
+
 }
+
+
