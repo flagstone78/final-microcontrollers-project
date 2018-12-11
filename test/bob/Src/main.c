@@ -72,7 +72,7 @@ volatile int16_t gyro_x, gyro_y, gyro_z;
 uint8_t rawData[14];
 
 double gyroAngle;
-volatile double accelAngle, gyroRead, angle = 0;
+volatile double accelAngle, gyroRead, ierror = 0, derror = 0, olda = 0, angle = 0, speed = 0;
 
 uint8_t txData[1] = {0x28}; //out_x_l for accel and gyro
 
@@ -187,15 +187,25 @@ void processData(void){
 	HAL_I2C_Mem_Read_IT(&hi2c1, MPU6050_ADDR, 0x3B, I2C_MEMADD_SIZE_8BIT, rawData, 14);
 	
 	//data processing
-	accelAngle = (atan2(-accel_x, accel_z)*1000);//-48; //tip forward is +
+	//accelAngle = 0.5*accelAngle + 0.5*(atan2(-accel_x, accel_z)*1000)+0; //tip forward is +
+	accelAngle = 0.9*accelAngle + 0.1*((-(accel_x*1000)/17000)-10); //tip forward is +
 	gyroRead = ((double)gyro_y*convertGryoToMilliRad); //scale to degrees
 	gyroAngle +=  gyroRead;
 
-	angle = (995*(angle+gyroRead) + 5*accelAngle)/1000;
 	
-	setDirection(angle);
+	angle = (995*(angle+gyroRead) + 5*accelAngle)/1000;
+	derror = .9*derror + 0.1*(olda-angle)*timerFreq; //derror = (new error - old error)/dt
+	olda = angle;
+	
+	ierror += angle/timerFreq; //ierror += (new error - old error)*dt
+	if(ierror > 4){ierror = 4;}
+	else if(ierror < -4){ierror = -4;}
+	
+	speed = (angle*290)+(derror*3)+(ierror*6000); //290 3 1400
+	setDirection(speed);
 	//setSpeed(abs((int)angle)*35);
-	setSpeed((angle*0)); //currently just p
+	//setSpeed((angle*240)+(derror*3)+(ierror*0)); //with just angle
+	setSpeed(speed); //currently just p
 }
 
 void printStuff(void){
@@ -211,6 +221,8 @@ void printStuff(void){
 	SerialNum(gyroAngle, 'g');
 	SerialNum(accelAngle, 'c');
 	SerialNum(angle, 'a');
+	SerialNum(derror, 'd');
+	SerialNum(ierror, 'i');
 	
 	newline();
 }
