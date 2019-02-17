@@ -57,7 +57,7 @@ UART_HandleTypeDef huart2;
 #define MPU6050_ADDR 0x69<<1
 #define gyroSensitivity 250.0 //degrees per second
 #define clkFreq 40000000 //Hz
-#define timerFreq 500.0 //Hz
+#define timerFreq 1000.0 //Hz
 #define timerDiv clkFreq/timerFreq
 #define degPersecondPerUnit gyroSensitivity/32768.0
 #define PI 3.14159265358979323846
@@ -188,7 +188,7 @@ void processData(void){
 	
 	//data processing
 	//accelAngle = 0.5*accelAngle + 0.5*(atan2(-accel_x, accel_z)*1000)+0; //tip forward is +
-	accelAngle = 0.9*accelAngle + 0.1*((-(accel_x*1000)/17000)-10); //tip forward is +
+	accelAngle = 0.99*accelAngle + 0.01*((-(accel_x*1000)/17000)+20); //tip forward is +
 	gyroRead = ((double)gyro_y*convertGryoToMilliRad); //scale to degrees
 	gyroAngle +=  gyroRead;
 
@@ -198,10 +198,10 @@ void processData(void){
 	olda = angle;
 	
 	ierror += angle/timerFreq; //ierror += (new error - old error)*dt
-	if(ierror > 4){ierror = 4;}
-	else if(ierror < -4){ierror = -4;}
+	if(ierror > 1){ierror = 1;}
+	else if(ierror < -1){ierror = -1;}
 	
-	speed = (angle*290)+(derror*3)+(ierror*6000); //290 3 1400
+	speed = (angle*220)+(derror*2)+(ierror*6000); //220 2 6000
 	setDirection(speed);
 	//setSpeed(abs((int)angle)*35);
 	//setSpeed((angle*240)+(derror*3)+(ierror*0)); //with just angle
@@ -218,12 +218,14 @@ void printStuff(void){
 	//SerialNum(gyro_y, 'g');
 	////SerialNum(gyro_z, 'w');
 	
-	SerialNum(gyroAngle, 'g');
-	SerialNum(accelAngle, 'c');
-	SerialNum(angle, 'a');
-	SerialNum(derror, 'd');
-	SerialNum(ierror, 'i');
+	//SerialNum(gyroAngle, 'g');
+	//SerialNum(accelAngle, 'c');
+	//SerialNum(angle, 'a');
 	
+	SerialNum(angle*220, 'p');
+	SerialNum(ierror*6000, 'i');
+	SerialNum(derror*2, 'd');
+	SerialNum(speed, 's');
 	newline();
 }
 
@@ -436,7 +438,7 @@ static void MX_TIM3_Init(void)
   TIM_MasterConfigTypeDef sMasterConfig;
 
   htim3.Instance = TIM3;
-  htim3.Init.Prescaler = 79;
+  htim3.Init.Prescaler = 39;
   htim3.Init.CounterMode = TIM_COUNTERMODE_UP;
   htim3.Init.Period = 999;
   htim3.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
